@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chicago Rebirth: Keyword Map</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔥</text></svg>"
+    />
+    <meta name="theme-color" content="#2b0f05" />
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ["Inter", "sans-serif"],
+              serif: ["Playfair Display", "serif"],
+            },
+            colors: {
+              "chicago-gold": "#FFD700",
+              "fire-orange": "#FF4500",
+              "ash-slate": "#708090",
+              "rebuild-white": "#F0F8FF",
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      /* --- BACKGROUND & ANIMATION STYLES --- */
+      body {
+        margin: 0;
+        overflow-x: hidden;
+        background-color: #0f172a;
+        font-family: "Inter", sans-serif;
+      }
+
+      #dynamic-bg {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: -1;
+        background: linear-gradient(
+          to top,
+          #2b0f05 0%,
+          #1a1a1a 40%,
+          #0f172a 100%
+        );
+        overflow: hidden;
+      }
+
+      #dynamic-bg::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(
+          circle,
+          transparent 50%,
+          rgba(0, 0, 0, 0.8) 100%
+        );
+        pointer-events: none;
+      }
+
+      .ember {
+        position: absolute;
+        bottom: -20px;
+        background: white;
+        border-radius: 50%;
+        opacity: 0;
+        box-shadow: 0 0 10px #ff6347, 0 0 20px #ff4500;
+        animation: rise ease-in infinite;
+        pointer-events: none;
+      }
+
+      @keyframes rise {
+        0% {
+          bottom: -20px;
+          opacity: 0;
+          transform: translateX(0) scale(1);
+        }
+        20% {
+          opacity: 0.8;
+          transform: translateX(-10px) scale(1.2);
+        }
+        50% {
+          transform: translateX(10px) scale(1);
+        }
+        100% {
+          bottom: 110%;
+          opacity: 0;
+          transform: translateX(-20px) scale(0.5);
+        }
+      }
+
+      /* --- BUTTON STYLES (UPDATED) --- */
+      .back-button {
+        position: fixed;
+        background-color: rgba(255, 99, 71, 0.9);
+        color: #fff;
+        border-radius: 50%;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        cursor: pointer;
+        transition: all 0.3s ease;
+        z-index: 100; /* Increased Z-Index to ensure clickability */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 48px;
+        height: 48px;
+        border: 2px solid transparent;
+        text-decoration: none; /* Removes underline from link */
+      }
+
+      .back-button:hover {
+        background-color: #ffd700;
+        color: #1a1a1a;
+        transform: scale(1.1);
+        border-color: #ff6347;
+      }
+
+      .top-left {
+        top: 20px;
+        left: 20px;
+      }
+      .bottom-right {
+        bottom: 20px;
+        right: 20px;
+      }
+
+      /* --- CONTENT STYLES --- */
+      .main-content-wrapper {
+        position: relative;
+        z-index: 1;
+        min-height: 100vh;
+        padding: 4rem 1rem;
+      }
+
+      #main-heading {
+        color: #ffd700;
+        text-shadow: 0 0 20px rgba(255, 69, 0, 0.6);
+        letter-spacing: -1px;
+      }
+
+      #sub-heading {
+        color: #e2e8f0;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+      }
+
+      .keyword-button {
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
+        cursor: pointer;
+        display: inline-flex;
+        margin: 6px;
+        padding: 10px 20px;
+        border-radius: 2px;
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.6);
+        font-weight: 700;
+        backdrop-filter: blur(2px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .keyword-button:hover {
+        transform: scale(1.15) !important;
+        box-shadow: 0 0 25px rgba(255, 215, 0, 0.6);
+        z-index: 50;
+        border-color: #ffd700;
+      }
+
+      .theme-event {
+        background: linear-gradient(135deg, #ff6347, #d9381e);
+        color: #fff;
+      }
+      .theme-arch {
+        background: linear-gradient(135deg, #ffd700, #e6ac00);
+        color: #1a1a1a;
+      }
+      .theme-building {
+        background: linear-gradient(135deg, #708090, #4a5568);
+        color: #fff;
+      }
+
+      .random-tile-layout {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: center;
+        align-content: center;
+        min-height: 60vh;
+      }
+      .size-large {
+        font-size: 1.5rem;
+        padding: 14px 28px;
+      }
+      .size-medium {
+        font-size: 1.125rem;
+      }
+      .size-small {
+        font-size: 0.875rem;
+        padding: 8px 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="dynamic-bg"></div>
+
+    <a
+      href="https://storymaps.arcgis.com/stories/50469a19de2c4a03b3008476ac062de3"
+      class="back-button top-left"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <polyline points="15 18 9 12 15 6"></polyline>
+      </svg>
+    </a>
+
+    <a
+      href="https://storymaps.arcgis.com/stories/50469a19de2c4a03b3008476ac062de3"
+      class="back-button bottom-right"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <polyline points="15 18 9 12 15 6"></polyline>
+      </svg>
+    </a>
+
+    <div class="main-content-wrapper max-w-7xl mx-auto">
+      <div class="main-container mx-auto">
+        <header class="text-center mb-6 pt-4">
+          <h1
+            id="main-heading"
+            class="text-5xl sm:text-7xl font-serif font-bold mb-4 tracking-tight"
+          >
+            Chicago Reborn
+          </h1>
+          <p
+            id="sub-heading"
+            class="text-lg max-w-2xl mx-auto font-light tracking-wide"
+          >
+            From the ashes of 1871 rose the modern metropolis. Click the tiles
+            to explore the history.
+          </p>
+        </header>
+
+        <div
+          id="keyword-grid"
+          class="random-tile-layout p-4 mx-auto max-w-5xl"
+        ></div>
+
+        <div
+          class="mt-16 text-center text-sm opacity-80"
+          style="color: #ffd700"
+        >
+          <p>*Links route to authoritative historical resources.</p>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      function createEmbers() {
+        const bg = document.getElementById("dynamic-bg");
+        const emberCount = 40;
+        for (let i = 0; i < emberCount; i++) {
+          const ember = document.createElement("div");
+          ember.classList.add("ember");
+          const size = Math.random() * 5 + 2 + "px";
+          const left = Math.random() * 100 + "%";
+          const duration = Math.random() * 5 + 5 + "s";
+          const delay = Math.random() * 5 + "s";
+          const color = Math.random() > 0.5 ? "#ff4500" : "#ffd700";
+          ember.style.width = size;
+          ember.style.height = size;
+          ember.style.left = left;
+          ember.style.backgroundColor = color;
+          ember.style.animationDuration = duration;
+          ember.style.animationDelay = delay;
+          bg.appendChild(ember);
+        }
+      }
+
+      const keywordsData = [
+        {
+          word: "Chicago Reborn",
+          theme: "event",
+          link: "https://storymaps.arcgis.com/stories/50469a19de2c4a03b3008476ac062de3",
+          size: "size-large",
+        },
+        {
+          word: "Great Chicago Fire",
+          theme: "event",
+          link: "https://storymaps.arcgis.com/stories/50469a19de2c4a03b3008476ac062de3#ref-n-YovdPa",
+          size: "size-medium",
+        },
+        {
+          word: "Scale of Destruction",
+          theme: "event",
+          link: "https://storymaps.arcgis.com/stories/50469a19de2c4a03b3008476ac062de3#ref-n-JMXsT8",
+          size: "size-medium",
+        },
+        {
+          word: "Origin of Fire",
+          theme: "event",
+          link: "https://storymaps.arcgis.com/stories/50469a19de2c4a03b3008476ac062de3#ref-n-3HUSqR",
+          size: "size-small",
+        },
+        {
+          word: "Crash & Relaunch",
+          theme: "event",
+          link: "https://storymaps.arcgis.com/stories/50469a19de2c4a03b3008476ac062de3#ref-n-vAl82m",
+          size: "size-large",
+        },
+        {
+          word: "Structural Analysis 1871",
+          theme: "event",
+          link: "https://storymaps.arcgis.com/stories/50469a19de2c4a03b3008476ac062de3#ref-n-RQf4W7",
+          size: "size-small",
+        },
+        {
+          word: "The Burning Point",
+          theme: "arch",
+          link: "https://storymaps.arcgis.com/stories/50469a19de2c4a03b3008476ac062de3#ref-n-G17GnF",
+          size: "size-large",
+        },
+        {
+          word: "Forging New Chicago",
+          theme: "arch",
+          link: "https://storymaps.arcgis.com/stories/50469a19de2c4a03b3008476ac062de3#ref-n-12Fz5E",
+          size: "size-large",
+        },
+        {
+          word: "20th Century Phase",
+          theme: "arch",
+          link: "https://storymaps.arcgis.com/stories/50469a19de2c4a03b3008476ac062de3#ref-n-VMY7gI",
+          size: "size-medium",
+        },
+        {
+          word: "Resilient Landmarks",
+          theme: "arch",
+          link: "https://storymaps.arcgis.com/stories/50469a19de2c4a03b3008476ac062de3#ref-n-zRChJd",
+          size: "size-large",
+        },
+        {
+          word: "Palmer House",
+          theme: "arch",
+          link: "https://storymaps.arcgis.com/stories/50469a19de2c4a03b3008476ac062de3#ref-n-4wCaPS",
+          size: "size-medium",
+        },
+        {
+          word: "The Rookery",
+          theme: "arch",
+          link: "https://storymaps.arcgis.com/stories/50469a19de2c4a03b3008476ac062de3#ref-n-85hQym",
+          size: "size-medium",
+        },
+        {
+          word: "Board of Trade",
+          theme: "arch",
+          link: "https://storymaps.arcgis.com/stories/50469a19de2c4a03b3008476ac062de3#ref-n-4XSHHc",
+          size: "size-small",
+        },
+        {
+          word: "Cultural Center",
+          theme: "arch",
+          link: "https://storymaps.arcgis.com/stories/50469a19de2c4a03b3008476ac062de3#ref-n-MVc8i4",
+          size: "size-small",
+        },
+        {
+          word: "Grant Park",
+          theme: "arch",
+          link: "https://storymaps.arcgis.com/stories/50469a19de2c4a03b3008476ac062de3#ref-n-d0kKZU",
+          size: "size-medium",
+        },
+        {
+          word: "Willis Tower",
+          theme: "arch",
+          link: "https://storymaps.arcgis.com/stories/50469a19de2c4a03b3008476ac062de3#ref-n-bYoJV4",
+          size: "size-small",
+        },
+        {
+          word: "Urban History",
+          theme: "building",
+          link: "https://storymaps.arcgis.com/stories/50469a19de2c4a03b3008476ac062de3#ref-n-DkdcqR",
+          size: "size-medium",
+        },
+        {
+          word: "Reconstruction",
+          theme: "building",
+          link: "https://storymaps.arcgis.com/stories/50469a19de2c4a03b3008476ac062de3#ref-n-KCNmkl",
+          size: "size-large",
+        },
+        {
+          word: "Architectural Innovation",
+          theme: "building",
+          link: "https://storymaps.arcgis.com/stories/50469a19de2c4a03b3008476ac062de3#ref-n-a05tpn",
+          size: "size-medium",
+        },
+        {
+          word: "The Loop",
+          theme: "building",
+          link: "https://storymaps.arcgis.com/stories/50469a19de2c4a03b3008476ac062de3#ref-n-YxgT5u",
+          size: "size-large",
+        },
+        {
+          word: "Civic Renewal",
+          theme: "building",
+          link: "https://storymaps.arcgis.com/stories/50469a19de2c4a03b3008476ac062de3#ref-n-l7TH43",
+          size: "size-medium",
+        },
+        {
+          word: "Public Space",
+          theme: "building",
+          link: "https://storymaps.arcgis.com/stories/50469a19de2c4a03b3008476ac062de3#ref-n-Z0T7wH",
+          size: "size-large",
+        },
+        {
+          word: "Modern Legacy",
+          theme: "building",
+          link: "https://storymaps.arcgis.com/stories/50469a19de2c4a03b3008476ac062de3#ref-n-zFfrsD",
+          size: "size-large",
+        },
+        {
+          word: "The Market",
+          theme: "building",
+          link: "https://storymaps.arcgis.com/stories/50469a19de2c4a03b3008476ac062de3#ref-n-MVShCc",
+          size: "size-large",
+        },
+      ];
+
+      const grid = document.getElementById("keyword-grid");
+
+      function shuffleArray(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [array[i], array[j]] = [array[j], array[i]];
+        }
+      }
+
+      function renderKeywords() {
+        shuffleArray(keywordsData);
+        grid.innerHTML = "";
+        keywordsData.forEach((item) => {
+          const button = document.createElement("a");
+          button.href = item.link;
+          button.target = "_blank";
+          button.rel = "noopener noreferrer";
+          let baseClasses = `keyword-button uppercase tracking-wider theme-${item.theme}`;
+          button.className = baseClasses;
+          if (item.size) button.classList.add(item.size);
+          const rotation = Math.random() * 8 - 4;
+          button.style.transform = `rotate(${rotation}deg)`;
+          button.textContent = item.word;
+          grid.appendChild(button);
+        });
+      }
+
+      window.onload = function () {
+        createEmbers();
+        renderKeywords();
+      };
+    </script>
+  </body>
+</html>
