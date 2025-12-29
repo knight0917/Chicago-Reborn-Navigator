@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chicago Rebirth: Interactive Map</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔥</text></svg>"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@300;400;600&family=Roboto+Mono:wght@500&display=swap" rel="stylesheet">
+
+    <style>
+      :root {
+        --map-bg: #0b0f19;
+        --grid-line: rgba(255, 255, 255, 0.03);
+        --text-main: #ffffff;
+        --card-bg: rgba(15, 23, 42, 0.9);
+        --accent-gold: #ffd700;
+        --accent-fire: #ff5500;
+        --accent-blue: #38bdf8;
+        --river-stroke: #1e293b;
+      }
+
+      body {
+        margin: 0;
+        overflow: hidden;
+        background-color: var(--map-bg);
+        font-family: 'Inter', sans-serif;
+        color: var(--text-main);
+      }
+
+      /* --- UI & HUD --- */
+      .ui-layer {
+        position: fixed;
+        z-index: 100;
+        pointer-events: none;
+      }
+      .ui-interactive {
+        pointer-events: auto;
+      }
+      
+      .vignette {
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: radial-gradient(circle, transparent 40%, #000 100%);
+        pointer-events: none;
+        z-index: 90;
+      }
+
+      /* --- MAP CANVAS --- */
+      #map-viewport {
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+        cursor: grab;
+        background: var(--map-bg);
+      }
+      #map-viewport:active { cursor: grabbing; }
+
+      #map-world {
+        position: relative;
+        width: 3000px;
+        height: 2000px;
+        transform-origin: center center;
+        transition: transform 0.1s ease-out;
+        
+        /* City Block Texture (Dark) */
+        background-color: #0b0f19;
+        background-image: 
+          linear-gradient(rgba(255, 255, 255, 0.02) 2px, transparent 2px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.02) 2px, transparent 2px);
+        background-size: 100px 100px;
+      }
+
+      /* --- VISUAL ELEMENTS --- */
+      
+      /* Glowing River */
+      .river-path {
+        fill: none;
+        stroke: #162a4a;
+        stroke-width: 60;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        filter: drop-shadow(0 0 20px rgba(56, 189, 248, 0.2));
+      }
+      
+      /* Connector Lines (Glowing) */
+      .connection-line {
+        fill: none;
+        stroke: rgba(255, 255, 255, 0.15);
+        stroke-width: 2;
+        stroke-dasharray: 5, 5;
+      }
+
+      /* Embers (Map Layer) */
+      .ember {
+        position: absolute;
+        width: 4px; height: 4px;
+        background: #ff5500;
+        border-radius: 50%;
+        box-shadow: 0 0 10px #ff5500;
+        animation: floatUp 10s linear infinite;
+        opacity: 0.6;
+        pointer-events: none;
+      }
+      @keyframes floatUp {
+        0% { transform: translateY(0) scale(1); opacity: 0; }
+        20% { opacity: 0.8; }
+        100% { transform: translateY(-200px) scale(0); opacity: 0; }
+      }
+
+      /* --- MARKERS --- */
+      .map-marker {
+        position: absolute;
+        transform: translate(-50%, -50%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        cursor: pointer;
+        z-index: 10;
+        transition: z-index 0s, transform 0.3s;
+      }
+
+      .map-marker:hover {
+        z-index: 50;
+        transform: translate(-50%, -60%) scale(1.1);
+      }
+
+      /* Marker Icon Container (Dark) */
+      .pin {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: #1e293b;
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        position: relative;
+        color: white;
+      }
+
+      .pin::after {
+        content: '';
+        position: absolute;
+        bottom: -5px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 0; 
+        height: 0; 
+        border-left: 6px solid transparent;
+        border-right: 6px solid transparent;
+        border-top: 8px solid #1e293b;
+      }
+
+      .map-marker:hover .pin {
+        background: #fff;
+        border-color: #fff;
+        color: #000;
+        box-shadow: 0 0 30px currentColor; /* Glow based on text color */
+      }
+       .map-marker:hover .pin::after {
+         border-top-color: white;
+      }
+
+      /* Theme Colors */
+      .theme-event { color: var(--accent-fire); }
+      .theme-event .pin { border-color: var(--accent-fire); box-shadow: 0 0 15px rgba(255, 69, 0, 0.3); }
+      
+      .theme-arch { color: var(--accent-gold); }
+      .theme-arch .pin { border-color: var(--accent-gold); box-shadow: 0 0 15px rgba(255, 215, 0, 0.1); }
+      
+      .theme-building { color: var(--accent-blue); }
+      .theme-building .pin { border-color: var(--accent-blue); box-shadow: 0 0 15px rgba(56, 189, 248, 0.1); }
+
+      /* Labels */
+      .label-box {
+        margin-top: 10px;
+        background: rgba(0, 0, 0, 0.8);
+        backdrop-filter: blur(4px);
+        padding: 5px 12px;
+        border-radius: 4px;
+        border-left: 3px solid currentColor;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #eee;
+        text-shadow: 0 1px 2px black;
+        opacity: 0.8;
+        transition: opacity 0.3s;
+        pointer-events: none;
+        white-space: nowrap;
+      }
+      .map-marker:hover .label-box { opacity: 1; background: black; }
+      
+      /* Pulse Animation */
+      .pulse .pin::before {
+        content: '';
+        position: absolute;
+        top: -10px; left: -10px; right: -10px; bottom: -10px;
+        border-radius: 50%;
+        border: 2px solid currentColor;
+        opacity: 0;
+        animation: pulseWave 2s infinite;
+      }
+      @keyframes pulseWave {
+        0% { transform: scale(0.5); opacity: 1; }
+        100% { transform: scale(1.5); opacity: 0; }
+      }
+
+
+      
+    </style>
+  </head>
+  <body>
+    
+    <!-- Vignette -->
+    <div class="vignette"></div>
+
+    <!-- HUD -->
+    <div class="ui-layer top-0 left-0 w-full p-6 flex justify-between items-start pointer-events-none">
+      <div class="pointer-events-auto bg-black/80 backdrop-blur-md border border-white/10 p-5 rounded-none border-l-4 border-l-fire-orange shadow-2xl max-w-sm">
+        <h1 class="text-3xl font-serif font-bold text-white mb-2 leading-none uppercase tracking-widest">Chicago<br/><span class="text-fire-orange">Navigator</span></h1>
+        <p class="text-xs text-gray-400 font-mono tracking-wide leading-relaxed mt-3">
+          SYSTEM: CARTOGRAPHIC VISUALIZATION<br>
+          DATE: 1871 - PRESENT
+        </p>
+
+        <!-- Legend -->
+        <div class="mt-4 flex gap-4 text-xs font-bold font-mono">
+          <span class="text-fire-orange flex items-center gap-1">● EVENT</span>
+          <span class="text-chicago-gold flex items-center gap-1">● ARCH</span>
+          <span class="text-sky-400 flex items-center gap-1">● CITY</span>
+        </div>
+
+        <div class="mt-6 pt-4 border-t border-white/10">
+          <p class="text-[10px] text-white font-mono tracking-widest uppercase">© 2025 DH G6</p>
+        </div>
+      </div>
+
+      <a href="https://storymaps.arcgis.com/stories/50469a19de2c4a03b3008476ac062de3" 
+         class="pointer-events-auto bg-white/10 hover:bg-white/20 hover:text-white backdrop-blur border border-white/20 text-gray-300 px-6 py-2 rounded-sm font-mono text-xs uppercase tracking-widest transition-all text-center">
+         Return to Story
+      </a>
+    </div>
+
+    <!-- Controls -->
+    <div class="ui-layer bottom-8 right-8 ui-interactive flex flex-col gap-2">
+      <button onclick="zoomMap(0.2)" class="w-12 h-12 bg-black/80 border border-white/20 text-white hover:bg-fire-orange hover:border-fire-orange transition-colors duration-300 flex items-center justify-center text-xl font-mono">+</button>
+      <button onclick="zoomMap(-0.2)" class="w-12 h-12 bg-black/80 border border-white/20 text-white hover:bg-fire-orange hover:border-fire-orange transition-colors duration-300 flex items-center justify-center text-xl font-mono">-</button>
+    </div>
+
+    <!-- MAIN WORLD -->
+    <div id="map-viewport">
+      <div id="map-world">
+        
+        <!-- SVG Layer: River & Connections -->
+        <svg id="geo-layer" class="absolute top-0 left-0 w-full h-full pointer-events-none" viewBox="0 0 3000 2000">
+          <!-- River Glow -->
+          <path d="M 3000,1000 C 2500,1000 2000,1000 1500,1000" class="river-path" />
+          <path d="M 1500,1000 C 1300,1000 1200,800 1200,0" class="river-path" />
+          <path d="M 1500,1000 C 1500,1200 1400,1400 1400,2000" class="river-path" />
+          
+          <!-- Connections (Will be drawn by JS) -->
+          <g id="connections-group"></g>
+        </svg>
+
+        <!-- Dynamic Embers Layer -->
+        <div id="embers-layer" class="absolute top-0 left-0 w-full h-full pointer-events-none"></div>
+
+        <!-- Markers Layer -->
+        <div id="markers-layer" class="absolute top-0 left-0 w-full h-full"></div>
+        
+      </div>
+    </div>
+
+    <script>
+      /* --- 1. COORDINATE DATA --- */
+      const nodes = [
+        // EVENT CLUSTER (SW)
+        { id: "fire_origin", word: "Origin of Fire", theme: "event", icon: "🔥", x: 1250, y: 1600, link: "#ref-n-3HUSqR" },
+        { id: "fire_spread", word: "The Burning Point", theme: "event", icon: "📍", x: 1300, y: 1450, link: "#ref-n-G17GnF" },
+        { id: "fire_main", word: "Great Chicago Fire", theme: "event", icon: "⚠️", x: 1200, y: 1200, pulse: true, size: 1.5, link: "#ref-n-YovdPa" },
+        { id: "destruction", word: "Scale of Destruction", theme: "event", icon: "📉", x: 1350, y: 1300, link: "#ref-n-JMXsT8" },
+        
+        // LOOP / ARCH CLUSTER (Center)
+        { id: "loop", word: "The Loop", theme: "building", icon: "🔄", x: 1550, y: 1050, pulse: true, link: "#ref-n-YxgT5u" },
+        { id: "palmer", word: "Palmer House", theme: "arch", icon: "🏨", x: 1600, y: 1080, link: "#ref-n-4wCaPS" },
+        { id: "rookery", word: "The Rookery", theme: "arch", icon: "🦅", x: 1480, y: 1100, link: "#ref-n-85hQym" },
+        { id: "bot", word: "Board of Trade", theme: "arch", icon: "📈", x: 1500, y: 1200, link: "#ref-n-4XSHHc" },
+        { id: "willis", word: "Willis Tower", theme: "arch", icon: "🔭", x: 1400, y: 1150, link: "#ref-n-bYoJV4" },
+        
+        // CULTURE / URBAN (East)
+        { id: "cultural", word: "Cultural Center", theme: "arch", icon: "🎨", x: 1620, y: 950, link: "#ref-n-MVc8i4" },
+        { id: "grant", word: "Grant Park", theme: "arch", icon: "🌳", x: 1800, y: 1100, link: "#ref-n-d0kKZU" },
+        { id: "public", word: "Public Space", theme: "building", icon: "⛲", x: 1850, y: 1000, link: "#ref-n-Z0T7wH" },
+        
+        // REBIRTH (North)
+        { id: "structural", word: "Structural Analysis", theme: "event", icon: "🧱", x: 1400, y: 900, link: "#ref-n-RQf4W7" },
+        { id: "reborn", word: "Chicago Reborn", theme: "event", icon: "✨", x: 1500, y: 800, pulse: true, size: 1.5, link: "https://storymaps.arcgis.com/stories/50469a19de2c4a03b3008476ac062de3" },
+        { id: "modern", word: "Modern Legacy", theme: "building", icon: "🏢", x: 1650, y: 600, link: "#ref-n-zFfrsD" },
+      ];
+
+      // Define visual connections (fromID -> toID)
+      const connections = [
+        ["fire_origin", "fire_spread"],
+        ["fire_spread", "fire_main"],
+        ["fire_main", "destruction"],
+        ["destruction", "loop"],
+        ["loop", "rookery"],
+        ["loop", "bot"],
+        ["loop", "palmer"],
+        ["loop", "reborn"],
+        ["reborn", "modern"],
+        ["loop", "cultural"],
+        ["cultural", "grant"],
+      ];
+
+      const baseUrl = "https://storymaps.arcgis.com/stories/50469a19de2c4a03b3008476ac062de3";
+      
+      /* --- 2. RENDER ENGINE --- */
+      const markerLayer = document.getElementById("markers-layer");
+      const connectionsGroup = document.getElementById("connections-group");
+      const embersLayer = document.getElementById("embers-layer");
+
+      // 2a. Draw Connections
+      connections.forEach(([startId, endId]) => {
+        const start = nodes.find(n => n.id === startId);
+        const end = nodes.find(n => n.id === endId);
+        if (start && end) {
+          const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+          line.setAttribute("x1", start.x);
+          line.setAttribute("y1", start.y);
+          line.setAttribute("x2", end.x);
+          line.setAttribute("y2", end.y);
+          line.setAttribute("class", "connection-line");
+          connectionsGroup.appendChild(line);
+        }
+      });
+
+      // 2b. Draw Nodes
+      nodes.forEach(item => {
+        const el = document.createElement("a");
+        el.href = item.link.startsWith("http") ? item.link : baseUrl + item.link;
+        el.target = "_blank";
+        el.className = `map-marker theme-${item.theme} ${item.pulse ? 'pulse' : ''}`;
+        el.style.left = item.x + "px";
+        el.style.top = item.y + "px";
+        
+        // Icon logic
+        el.innerHTML = `
+          <div class="pin" style="transform: scale(${item.size || 1})">
+            ${item.icon}
+          </div>
+          <div class="label-box">${item.word}</div>
+        `;
+        markerLayer.appendChild(el);
+      });
+
+      // 2c. Spawn Embers (Particles) for Dark Mode
+      for(let i=0; i<50; i++) {
+        const ember = document.createElement("div");
+        ember.className = "ember";
+        // Random placement within the 'Fire' zone (approx SW quadrant)
+        const ex = 1000 + Math.random() * 800;
+        const ey = 1200 + Math.random() * 800;
+        ember.style.left = ex + "px";
+        ember.style.top = ey + "px";
+        // Randomize animation
+        ember.style.animationDuration = (5 + Math.random() * 10) + "s";
+        ember.style.animationDelay = (Math.random() * 5) + "s";
+        embersLayer.appendChild(ember);
+      }
+
+      /* --- 3. INTERACTION ENGINE --- */
+      const viewport = document.getElementById("map-viewport");
+      const world = document.getElementById("map-world");
+      
+      let state = {
+        scale: 0.8, // Start slightly zoomed out
+        panning: false,
+        startX: 0, startY: 0,
+        x: (window.innerWidth / 2) - 1500, 
+        y: (window.innerHeight / 2) - 1000 
+      };
+
+      function updateTransform() {
+        world.style.transform = `translate(${state.x}px, ${state.y}px) scale(${state.scale})`;
+      }
+      updateTransform(); // Initial render
+
+      window.zoomMap = (delta) => {
+        const newScale = Math.min(Math.max(0.4, state.scale + delta), 2.5);
+        state.scale = newScale;
+        updateTransform();
+      }
+
+      viewport.addEventListener("mousedown", (e) => {
+        state.panning = true;
+        state.startX = e.clientX - state.x;
+        state.startY = e.clientY - state.y;
+        viewport.style.cursor = "grabbing";
+      });
+
+      window.addEventListener("mouseup", () => {
+        state.panning = false;
+        viewport.style.cursor = "grab";
+      });
+
+      window.addEventListener("mousemove", (e) => {
+        if (!state.panning) return;
+        e.preventDefault();
+        state.x = e.clientX - state.startX;
+        state.y = e.clientY - state.startY;
+        updateTransform();
+      });
+
+      viewport.addEventListener("wheel", (e) => {
+        e.preventDefault();
+        zoomMap(e.deltaY > 0 ? -0.1 : 0.1);
+      }, { passive: false });
+
+    </script>
+  </body>
+</html>
